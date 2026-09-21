@@ -1,0 +1,14 @@
+# NEVER commit the service-account key.
+credentials.json
+*.json.key
+
+# Local run output
+data/
+logs/
+__pycache__/
+*.pyc
+.venv/
+
+# macOS
+.DS_Store
+*.plist.bak

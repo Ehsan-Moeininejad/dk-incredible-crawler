@@ -1,0 +1,61 @@
+name: 00 - Can GitHub reach the Digikala API?
+
+# Run this FIRST, before setting anything else up.
+#
+# GitHub's runners live outside Iran. If Digikala's API refuses or geo-blocks
+# those IPs, the whole GitHub Actions route is dead and you stay on launchd or
+# move to Digikala's own Airflow. Two minutes now saves an hour of confusion.
+#
+# Actions tab -> "00 - Can GitHub reach the Digikala API?" -> Run workflow.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe the incredible-offers endpoint
+        run: |
+          python3 - <<'PY'
+          import json, sys, urllib.request
+
+          url = "https://api.digikala.com/v1/incredible-offers/?page=1"
+          req = urllib.request.Request(url, headers={
+              "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                            "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+              "Accept": "application/json",
+          })
+
+          try:
+              with urllib.request.urlopen(req, timeout=25) as r:
+                  status = r.status
+                  payload = json.load(r)
+          except Exception as exc:
+              print(f"::error::could not reach the API from this runner: {exc}")
+              print("VERDICT: GitHub Actions is NOT a viable host for this crawler.")
+              sys.exit(1)
+
+          listing = payload.get("data", {}).get("incredible_products_list", {})
+          products = listing.get("products") or []
+          pager = listing.get("pager") or {}
+
+          print(f"HTTP status      : {status}")
+          print(f"products on p.1  : {len(products)}")
+          print(f"pager            : {pager}")
+          if products:
+              p = products[0]
+              price = (p.get("default_variant") or {}).get("price") or {}
+              print(f"sample dkp       : {p.get('id')}")
+              print(f"sample title     : {p.get('title_fa')}")
+              print(f"sample price     : {price.get('selling_price')} rial")
+
+          if not products:
+              print("::error::the API answered but returned no products - "
+                    "likely a geo-block or a changed response shape.")
+              print("VERDICT: NOT viable without further investigation.")
+              sys.exit(1)
+
+          print("VERDICT: GitHub Actions can reach the API. Proceed with setup.")
+          PY

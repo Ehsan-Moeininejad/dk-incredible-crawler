@@ -1,0 +1,67 @@
+name: Digikala Incredible Offers
+
+on:
+  # Times are UTC. Tehran is UTC+3:30 all year (Iran dropped DST in 2022), so:
+  #   00:00 Tehran = 20:30 UTC (previous day)
+  #   08:00 Tehran = 04:30 UTC
+  #   12:00 Tehran = 08:30 UTC
+  schedule:
+    - cron: "30 20,4,8 * * *"
+
+  # Lets you run it by hand from the Actions tab. Keep this -- it is how you
+  # test the workflow without waiting for a scheduled slot.
+  workflow_dispatch:
+
+# Never let two runs touch the sheet at the same time.
+concurrency:
+  group: dk-incredible-crawler
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write the Google service-account key
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: |
+          if [ -z "$GOOGLE_CREDENTIALS" ]; then
+            echo "::error::secret GOOGLE_CREDENTIALS is empty or not set"
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_CREDENTIALS" > credentials.json
+          python -c "import json;json.load(open('credentials.json'));print('key file is valid JSON')"
+
+      - name: Run the crawler
+        run: python crawler.py
+
+      - name: Remove the key file
+        if: always()
+        run: rm -f credentials.json
+
+      - name: Keep the CSV as a downloadable artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: incredible-offers-csv
+          path: data/latest.csv
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Show the log on failure
+        if: failure()
+        run: tail -40 logs/crawler.log || true
