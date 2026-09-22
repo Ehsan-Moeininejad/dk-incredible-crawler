@@ -19,6 +19,10 @@ on:
   # test the workflow without waiting for a scheduled slot.
   workflow_dispatch:
 
+# Needed by the "Keep the repository active" step, which pushes a commit.
+permissions:
+  contents: write
+
 # Never let two runs touch the sheet at the same time.
 concurrency:
   group: dk-incredible-crawler
@@ -64,6 +68,56 @@ jobs:
       - name: Remove the key file
         if: always()
         run: rm -f credentials.json
+
+      # ---------------------------------------------------------------------
+      # Keepalive.
+      #
+      # GitHub disables a public repository's scheduled workflows after 60 days
+      # with no repository activity, and only emails you afterwards. Rewriting
+      # and committing this one small file on every run means the repo is never
+      # idle for more than a few hours, so that timer never gets close.
+      #
+      # Only a ~200 byte status file is committed, never the CSV: four commits
+      # a day of a 400KB file would bloat the repository within months.
+      #
+      # A push made with GITHUB_TOKEN does not trigger workflows, so this
+      # cannot loop back into another run.
+      # ---------------------------------------------------------------------
+      - name: Keep the repository active
+        if: always()
+        run: |
+          rows=0
+          if [ -f data/latest.csv ]; then
+            rows=$(( $(wc -l < data/latest.csv) - 1 ))
+          fi
+
+          {
+            echo "# Last run"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| when | $(TZ=Asia/Tehran date '+%Y-%m-%d %H:%M') Tehran · $(date -u '+%H:%M') UTC |"
+            echo "| trigger | \`${{ github.event_name }}\` |"
+            echo "| rows written | $rows |"
+            echo "| result | ${{ job.status }} |"
+            echo "| run | [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |"
+            echo
+            echo "<!-- Rewritten by every run. Two jobs: a glanceable status, and a"
+            echo "     commit often enough that GitHub never disables the schedule"
+            echo "     for 60 days of repository inactivity. -->"
+          } > LAST_RUN.md
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add LAST_RUN.md
+
+          if git diff --staged --quiet; then
+            echo "LAST_RUN.md unchanged - nothing to commit"
+            exit 0
+          fi
+
+          git commit -m "run $(TZ=Asia/Tehran date '+%Y-%m-%d %H:%M') Tehran - $rows rows"
+          git push || (git pull --rebase && git push)
 
       - name: Keep the CSV as a downloadable artifact
         if: always()
