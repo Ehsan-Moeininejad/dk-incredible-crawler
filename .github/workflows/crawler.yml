@@ -5,7 +5,7 @@ on:
   #
   #   20:33 UTC = 00:03 Tehran (next day)
   #   03:33 UTC = 07:03 Tehran
-  #   08:33 UTC = 12:03 Tehran
+  #   09:33 UTC = 13:03 Tehran
   #   12:33 UTC = 16:03 Tehran
   #
   # Minute 33 is deliberate. GitHub's scheduler is busiest at :00 and :30, and
@@ -13,7 +13,7 @@ on:
   # An odd minute off the peak is measurably more reliable, and three minutes
   # past the hour makes no difference to a snapshot that refreshes 4x a day.
   schedule:
-    - cron: "33 20,3,8,12 * * *"
+    - cron: "33 20,3,9,12 * * *"
 
   # Lets you run it by hand from the Actions tab. Keep this -- it is how you
   # test the workflow without waiting for a scheduled slot.
