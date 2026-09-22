@@ -1,12 +1,19 @@
 name: Digikala Incredible Offers
 
 on:
-  # Times are UTC. Tehran is UTC+3:30 all year (Iran dropped DST in 2022), so:
-  #   00:00 Tehran = 20:30 UTC (previous day)
-  #   08:00 Tehran = 04:30 UTC
-  #   12:00 Tehran = 08:30 UTC
+  # Times are UTC. Tehran is UTC+3:30 all year (Iran dropped DST in 2022).
+  #
+  #   20:33 UTC = 00:03 Tehran (next day)
+  #   03:33 UTC = 07:03 Tehran
+  #   08:33 UTC = 12:03 Tehran
+  #   12:33 UTC = 16:03 Tehran
+  #
+  # Minute 33 is deliberate. GitHub's scheduler is busiest at :00 and :30, and
+  # scheduled runs are delayed - sometimes dropped - during those spikes.
+  # An odd minute off the peak is measurably more reliable, and three minutes
+  # past the hour makes no difference to a snapshot that refreshes 4x a day.
   schedule:
-    - cron: "30 20,4,8 * * *"
+    - cron: "33 20,3,8,12 * * *"
 
   # Lets you run it by hand from the Actions tab. Keep this -- it is how you
   # test the workflow without waiting for a scheduled slot.
@@ -20,7 +27,7 @@ concurrency:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Check out the repository
@@ -34,6 +41,11 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Report how this run was triggered
+        run: |
+          echo "event      : ${{ github.event_name }}"
+          echo "started at : $(date -u '+%Y-%m-%d %H:%M UTC')  /  $(TZ=Asia/Tehran date '+%H:%M Tehran')"
 
       - name: Write the Google service-account key
         env:
