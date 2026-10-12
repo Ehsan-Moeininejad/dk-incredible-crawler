@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| when | 2026-10-12 16:06 Tehran · 12:36 UTC |
+| when | 2026-10-12 19:07 Tehran · 15:37 UTC |
 | trigger | `workflow_dispatch` |
-| rows written | 1665 |
+| rows written | 1678 |
 | result | success |
-| run | [#165](https://github.com/Ehsan-Moeininejad/dk-incredible-crawler/actions/runs/38249732689) |
+| run | [#166](https://github.com/Ehsan-Moeininejad/dk-incredible-crawler/actions/runs/38271066828) |
 
 <!-- Rewritten by every run. Two jobs: a glanceable status, and a
      commit often enough that GitHub never disables the schedule
